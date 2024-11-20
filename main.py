@@ -9,4 +9,3 @@ async def test1():
     return {'message':'Hello World'}
 
 uvicorn.run(app, host='0.0.0.0', port=8000)
-sd
