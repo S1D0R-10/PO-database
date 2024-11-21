@@ -37,4 +37,6 @@ async def hello_world():
 
 if __name__ == '__main__':
     import uvicorn
-    uvicorn.run("example:app", reload=True)port=8000)
+    uvicorn.run("main:app", reload=True)
+
+    print("sigma skibidi")
