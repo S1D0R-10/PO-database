@@ -1,42 +1,73 @@
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, HTTPException
+from typing import List
+
 app = FastAPI()
 
-class Game:
-    def __init__(self, name, price):
-        self.name = name
-        self.price = price
 
-    def modify_price(self, price):
-        self.price = price
+class Produkt:
+    def __init__(self, id: int, nazwa: str, cena: float):
+        self.id = id
+        self.nazwa = nazwa
+        self.cena = cena
 
-class Store:
-    def __init__(self, store_name):
-        self.store_name = store_name
-        self.games = {}
-        self.game_counter = 0
+    def get_info(self) -> str:
+        return f"Produkt {self.nazwa}, Cena: {self.cena} PLN"
 
-    def add_game(self, game):
-        self.games[self.game_counter] = game
-        self.game_counter += 1
-        return self.game_counter - 1
+    def apply_discount(self, procent: float) -> None:
+        self.cena -= self.cena * (procent / 100)
 
-    def remove_game(self, id):
-        del self.games[id]
+class Kategoria:
+    def __init__(self, id: int, nazwa: str):
+        self.id = id
+        self.nazwa = nazwa
+        self.produkty: List[Produkt] = []
 
-store = Store("SUPER_SKLEP")
+    def dodaj_produkt(self, produkt: Produkt) -> None:
+        self.produkty.append(produkt)
 
-@app.post("/add_game/")
-async def hello_world(name: str, price: float):
-    game = Game(name, price)
-    game_id = store.add_game(game)
-    return f"Game {name} added as id: {game_id}"
+    def usun_produkt(self, produkt_id: int) -> None:
+        self.produkty = [p for p in self.produkty if p.id != produkt_id]
 
-@app.get("/display_games/")
-async def hello_world():
-    return store.games
+produkty_db: List[Produkt] = []
+kategorie_db: List[Kategoria] = []
 
-if __name__ == '__main__':
+@app.post("/produkty/")
+def dodaj_produkt(id: int, nazwa: str, cena: float):
+    for produkt in produkty_db:
+        if produkt.id == id:
+            raise HTTPException(status_code=400, detail="Produkt o tym ID już istnieje.")
+    nowy_produkt = Produkt(id, nazwa, cena)
+    produkty_db.append(nowy_produkt)
+    return {"message": "Produkt dodany pomyślnie."}
+
+@app.get("/produkty/{produkt_id}")
+def pobierz_produkt(produkt_id: int):
+    for produkt in produkty_db:
+        if produkt.id == produkt_id:
+            return {
+                "id": produkt.id,
+                "nazwa": produkt.nazwa,
+                "cena": produkt.cena
+            }
+    raise HTTPException(status_code=404, detail="Produkt nie znaleziony.")
+
+@app.put("/produkty/{produkt_id}")
+def aktualizuj_produkt(produkt_id: int, nazwa: str = None, cena: float = None):
+    for produkt in produkty_db:
+        if produkt.id == produkt_id:
+            if nazwa is not None:
+                produkt.nazwa = nazwa
+            if cena is not None:
+                produkt.cena = cena
+            return {"message": "Produkt zaktualizowany pomyślnie."}
+    raise HTTPException(status_code=404, detail="Produkt nie znaleziony.")
+
+@app.delete("/produkty/{produkt_id}")
+def usun_produkt(produkt_id: int):
+    global produkty_db
+    produkty_db = [p for p in produkty_db if p.id != produkt_id]
+    return {"message": "Produkt usunięty pomyślnie."}
+
+if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", reload=True)
-
-    print("sigma skibidi")
+    uvicorn.run(app, host="127.0.0.1", port=8000)
